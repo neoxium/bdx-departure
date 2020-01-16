@@ -18,7 +18,7 @@ def run():
     :return:
     """
     arg = get_arg()
-    param_datetime = str_to_datetime(arg["time"])
+    param_datetime = arg_to_datetime(arg["time"])
     dataframe = dataframe_from_response(request_api())
 
     previsions = dataframe.bm_prevision
@@ -30,26 +30,29 @@ def run():
         max_prevision = dataframe[previsions == previsions.max()]
 
         average_prevision = previsions.mean()
-        median_prevision = previsions.median()
 
         result = "It's a great time to leave :)" \
-            if requested_prevision.bm_prevision.values[0] < median_prevision \
-            else "It's not a very good time to leave :("
+            if requested_prevision.bm_prevision.iloc[0] < average_prevision \
+            else "It's not a good time to leave :("
 
-        message = ("Prevision: {req_prev} @ {req_hour}\n"
+        message = ("\nBDX TRAFFIC CHECKER\n\n"
+                   "Prevision: {req_prev} @ {req_hour}\n"
                    "Minimum: {min_prev} @ {min_hour}\n"
                    "Maximum: {max_prev} @ {max_hour}\n"
-                   "Average: {avg_prev}\n"
+                   "Average: {avg_prev}\n\n"
                    "" + result)
 
         print(message.format(
-            req_prev=requested_prevision.bm_prevision.values[0],
-            req_hour=param_datetime.strftime("%H:%M"),
-            min_prev=min_prevision.bm_prevision.values[0],
-            min_hour=time_format(min_prevision.bm_heure.values[0]),
-            max_prev=max_prevision.bm_prevision.values[0],
-            max_hour=time_format(max_prevision.bm_heure.values[0]),
-            avg_prev=average_prevision))
+            req_prev=requested_prevision.bm_prevision.iloc[0],
+            req_hour=time_format(requested_prevision.bm_heure.iloc[0]),
+
+            min_prev=min_prevision.bm_prevision.iloc[0],
+            min_hour=time_format(min_prevision.bm_heure.iloc[0]),
+
+            max_prev=max_prevision.bm_prevision.iloc[0],
+            max_hour=time_format(max_prevision.bm_heure.iloc[0]),
+
+            avg_prev=int(round(average_prevision))))
 
         exit(0)
     except IndexError:
@@ -64,18 +67,17 @@ def get_arg() -> dict:
     """
     parser = argparse.ArgumentParser(description="BDX TRAFFIC CHECKER")
     parser.add_argument("time", metavar="time", type=str, help="Time to check for (hh:ii)")
-    args = parser.parse_args()
-    return vars(args)
+    return vars(parser.parse_args())
 
 
-def str_to_datetime(time_str: str) -> datetime:
+def arg_to_datetime(time_arg: str) -> datetime:
     """
     Convert time string hh:mm to datetime
-    :param time_str:
-    :return:
+    :param time_arg:
+    :return datetime:
     """
     try:
-        args_parsed = [int(n) for n in time_str.split(":")]
+        args_parsed = [int(n) for n in time_arg.split(":")]
         today = datetime.now(pytz.timezone(TIMEZONE))
         return today.replace(
             hour=args_parsed[0],
@@ -94,37 +96,36 @@ def dataframe_from_response(response: str) -> pandas.DataFrame:
     """
     Create dataframe from API response
     :param response:
-    :return:
+    :return pandas.DataFrame:
     """
     response_dict = json.loads(response)
-    data = [record["fields"] for record in response_dict["records"]]
-    dataframe = pandas.DataFrame(data)
+    dataframe = pandas.DataFrame([record["fields"] for record in response_dict["records"]])
     dataframe.bm_heure = pandas.to_datetime(dataframe.bm_heure).dt.tz_convert(TIMEZONE)
     return dataframe
 
 
 def round_minutes(minutes: int) -> int:
     """
-    Round number to nearest 5
+    Round number to nearest 5, avoid next hour overflow
     :param minutes:
     :return int:
     """
-    return 5 * round(minutes / 5)
+    return 55 if minutes > 55 else 5 * round(minutes / 5)
 
 
 def request_api() -> str:
     """
     Request API
-    :return dict:
+    :return str:
     """
-    response = requests.get(API_URL, params={"dataset": "ci_courb_a"})
+    response = requests.get(API_URL, params={"dataset": "ci_courb_a", "rows": 193})
     return response.text
 
 
-def time_format(dt) -> datetime:
+def time_format(dt) -> str:
     """
     Convert Numpy Datetime64 to datetime type, timezone aware
     :param dt:
-    :return:
+    :return str:
     """
     return pandas.to_datetime(dt).strftime("%H:%M")
