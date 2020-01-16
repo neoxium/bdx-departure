@@ -19,41 +19,15 @@ def run():
     """
     arg = get_arg()
     param_datetime = arg_to_datetime(arg["time"])
-    dataframe = dataframe_from_response(request_api())
-
-    previsions = dataframe.bm_prevision
 
     try:
-        requested_prevision = dataframe[dataframe.bm_heure == param_datetime]
-
-        min_prevision = dataframe[previsions == previsions.min()]
-        max_prevision = dataframe[previsions == previsions.max()]
-
-        average_prevision = previsions.mean()
-
-        result = "It's a great time to leave :)" \
-            if requested_prevision.bm_prevision.iloc[0] < average_prevision \
-            else "It's not a good time to leave :("
-
-        message = ("\nBDX TRAFFIC CHECKER\n\n"
-                   "Prevision: {req_prev} @ {req_hour}\n"
-                   "Minimum: {min_prev} @ {min_hour}\n"
-                   "Maximum: {max_prev} @ {max_hour}\n"
-                   "Average: {avg_prev}\n\n"
-                   "" + result)
-
-        print(message.format(
-            req_prev=requested_prevision.bm_prevision.iloc[0],
-            req_hour=time_format(requested_prevision.bm_heure.iloc[0]),
-
-            min_prev=min_prevision.bm_prevision.iloc[0],
-            min_hour=time_format(min_prevision.bm_heure.iloc[0]),
-
-            max_prev=max_prevision.bm_prevision.iloc[0],
-            max_hour=time_format(max_prevision.bm_heure.iloc[0]),
-
-            avg_prev=int(round(average_prevision))))
-
+        dataframe = dataframe_from_response(request_api())
+        previsions = dataframe.bm_prevision
+        print(output_str(
+            hit=dataframe[dataframe.bm_heure == param_datetime],
+            mini=dataframe[previsions == previsions.min()],
+            maxi=dataframe[previsions == previsions.max()],
+            avg=previsions.mean()))
         exit(0)
     except IndexError:
         print("Your departure time may not have been found, try few minutes before or after")
@@ -92,6 +66,24 @@ def arg_to_datetime(time_arg: str) -> datetime:
         exit(2)
 
 
+def round_minutes(minutes: int) -> int:
+    """
+    Round number to nearest 5, avoid next hour overflow
+    :param minutes:
+    :return int:
+    """
+    return 55 if minutes > 55 else 5 * round(minutes / 5)
+
+
+def request_api() -> str:
+    """
+    Request API for daily records from 7am to 11pm, 193 records a day
+    :return str:
+    """
+    response = requests.get(API_URL, params={"dataset": "ci_courb_a", "rows": 193})
+    return response.text
+
+
 def dataframe_from_response(response: str) -> pandas.DataFrame:
     """
     Create dataframe from API response
@@ -104,22 +96,31 @@ def dataframe_from_response(response: str) -> pandas.DataFrame:
     return dataframe
 
 
-def round_minutes(minutes: int) -> int:
-    """
-    Round number to nearest 5, avoid next hour overflow
-    :param minutes:
-    :return int:
-    """
-    return 55 if minutes > 55 else 5 * round(minutes / 5)
+def output_str(hit: pandas.DataFrame, mini: pandas.DataFrame, maxi: pandas.DataFrame, avg: float) -> str:
+    display_average = int(round(avg))
 
+    result = "It's a great time to leave :)" \
+        if hit.bm_prevision.iloc[0] < avg \
+        else "It's not a good time to leave :("
 
-def request_api() -> str:
-    """
-    Request API
-    :return str:
-    """
-    response = requests.get(API_URL, params={"dataset": "ci_courb_a", "rows": 193})
-    return response.text
+    message = ("\nBDX TRAFFIC CHECKER\n\n"
+               "Prevision: {req_prev} @ {req_hour}\n"
+               "Minimum: {min_prev} @ {min_hour}\n"
+               "Maximum: {max_prev} @ {max_hour}\n"
+               "Average: {avg_prev}\n\n"
+               "" + result)
+
+    return message.format(
+        req_prev=hit.bm_prevision.iloc[0],
+        req_hour=time_format(hit.bm_heure.iloc[0]),
+
+        min_prev=mini.bm_prevision.iloc[0],
+        min_hour=time_format(mini.bm_heure.iloc[0]),
+
+        max_prev=maxi.bm_prevision.iloc[0],
+        max_hour=time_format(maxi.bm_heure.iloc[0]),
+
+        avg_prev=display_average)
 
 
 def time_format(dt) -> str:
