@@ -11,12 +11,16 @@
 * In project folder, set virtual environment and activate according to your operating system
 * Install dependencies `$ pip install -r requirements.txt`
 
+## Run tests
+
+`(venv) pytest`
+
 ## Usage
 
 ```
-(venv) python main.py -h
+(venv) python ./ -h
 
-usage: main.py [-h] time
+usage: [-h] time
 
 BDX TRAFFIC CHECKER
 
@@ -30,7 +34,7 @@ optional arguments:
 Example
 
 ```
-(venv) python main.py 14:28
+(venv) python ./ 14:28
 
 BDX TRAFFIC CHECKER
 

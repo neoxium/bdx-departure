@@ -2,11 +2,11 @@
 Command Line Interface
 """
 import argparse
-import requests
 from datetime import datetime
-import pytz
-import pandas
 import json
+import pytz
+import requests
+import pandas
 
 API_URL = "https://opendata.bordeaux-metropole.fr/api/records/1.0/search/"
 TIMEZONE = "Europe/Paris"
@@ -40,7 +40,7 @@ def get_arg() -> dict:
     :return dict:
     """
     parser = argparse.ArgumentParser(description="BDX TRAFFIC CHECKER")
-    parser.add_argument("time", metavar="time", type=str, help="Time to check for (hh:ii)")
+    parser.add_argument("time", metavar="time", type=str, help="Time to check for (hh:mm)")
     return vars(parser.parse_args())
 
 
